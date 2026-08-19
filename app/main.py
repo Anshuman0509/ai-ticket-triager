@@ -26,6 +26,10 @@ app = FastAPI(title="AI Ticket Triager", version="1.0.0")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 MODEL = "claude-sonnet-4-6"
 
+@app.get("/")
+def read_root():
+    return {"message": "AI Ticket Triager is running!"}
+
 
 class Ticket(BaseModel):
     subject: str
