@@ -1,0 +1,86 @@
+{
+  "name": "AI Ticket Triager",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-ticket",
+        "responseMode": "responseNode"
+      },
+      "name": "Webhook - New Ticket",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/triage",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "subject", "value": "={{$json[\"subject\"]}}" },
+            { "name": "body", "value": "={{$json[\"body\"]}}" },
+            { "name": "customer_email", "value": "={{$json[\"customer_email\"]}}" }
+          ]
+        }
+      },
+      "name": "HTTP Request - Triage API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{$json[\"priority\"]}}",
+        "rules": {
+          "rules": [
+            { "value2": "Urgent", "output": 0 },
+            { "value2": "High", "output": 0 }
+          ]
+        },
+        "fallbackOutput": 1
+      },
+      "name": "Switch - Route by Priority",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#support-urgent",
+        "text": "=New {{$json[\"priority\"]}} priority ticket ({{$json[\"category\"]}}): {{$json[\"subject\"]}}"
+      },
+      "name": "Slack - Urgent Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [950, 200]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "sheetId": "TICKET_LOG_SHEET_ID",
+        "range": "Tickets!A:F"
+      },
+      "name": "Google Sheets - Log Ticket",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [950, 400]
+    }
+  ],
+  "connections": {
+    "Webhook - New Ticket": {
+      "main": [[{ "node": "HTTP Request - Triage API", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request - Triage API": {
+      "main": [[{ "node": "Switch - Route by Priority", "type": "main", "index": 0 }]]
+    },
+    "Switch - Route by Priority": {
+      "main": [
+        [{ "node": "Slack - Urgent Alert", "type": "main", "index": 0 }],
+        [{ "node": "Google Sheets - Log Ticket", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}
